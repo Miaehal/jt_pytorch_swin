@@ -52,7 +52,7 @@ class WindowAttention(nn.Module):
         q = q * self.scale
         attn = jt.matmul(q, k.transpose(-2, -1))
 
-        relative_position_bias = self.relative_position_bias_table[self.relative_position_index.reshape(-1)].reshape(
+        relative_position_bias = self.relative_position_bias_table[self._relative_position_index.reshape(-1)].reshape(
             self.window_size[0] * self.window_size[1], self.window_size[0] * self.window_size[1], -1
         )
         relative_position_bias = relative_position_bias.permute(2, 0, 1).contiguous()
