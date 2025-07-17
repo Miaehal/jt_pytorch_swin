@@ -1,0 +1,1 @@
+from swin_transformer_jittor import SwinTransformer
