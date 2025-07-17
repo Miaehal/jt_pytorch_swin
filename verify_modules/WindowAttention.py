@@ -1,16 +1,5 @@
 import jittor as jt
 from jittor import nn
-import numpy as np
-from scipy.stats import truncnorm
-
-def trunc_normal_jt(var, mean=0., std=1., a=-2., b=2.):
-    """jittor version of trunc_normal."""
-
-    low = (a - mean) / std
-    high = (b - mean) / std
-    np_array = truncnorm.rvs(low, high, loc=mean, scale=std, size=var.shape).astype(np.float32)
-    var.assign(jt.array(np_array))
-    return var
 
 class WindowAttention(nn.Module):
     def __init__(self, dim, window_size, num_heads, qkv_bias=True, qk_scale=None, attn_drop=0.0, proj_drop=0.0):
@@ -41,7 +30,7 @@ class WindowAttention(nn.Module):
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
-        trunc_normal_jt(self.relative_position_bias_table, std=0.02)
+        jt.init.trunc_normal_(self.relative_position_bias_table, std=0.02)
         self.softmax = nn.Softmax(dim=-1)
 
     def execute(self, x, mask=None):

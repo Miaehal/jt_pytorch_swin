@@ -1,7 +1,5 @@
 import jittor as jt
 from jittor import nn
-import numpy as np
-from scipy.stats import truncnorm
 
 class Mlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
@@ -20,15 +18,6 @@ class Mlp(nn.Module):
         x = self.fc2(x)
         x = self.drop(x)
         return x
-
-def trunc_normal_jt(var, mean=0., std=1., a=-2., b=2.):
-    """jittor version of trunc_normal."""
-
-    low = (a - mean) / std
-    high = (b - mean) / std
-    np_array = truncnorm.rvs(low, high, loc=mean, scale=std, size=var.shape).astype(np.float32)
-    var.assign(jt.array(np_array))
-    return var
 
 def window_partition(x, window_size):
     B, H, W, C = x.shape
@@ -71,7 +60,7 @@ class WindowAttention(nn.Module):
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
-        trunc_normal_jt(self.relative_position_bias_table, std=0.02)
+        jt.init.trunc_normal_(self.relative_position_bias_table, std=0.02)
         self.softmax = nn.Softmax(dim=-1)
 
     def execute(self, x, mask=None):
@@ -307,145 +296,10 @@ class BasicLayer(nn.Module):
             flops += self.downsample.flops()
         return flops
 
-class PatchEmbed(nn.Module):
-    def __init__(self, img_size=224, patch_size=4, in_chans=3, embed_dim=96, norm_layer=None):
-        super().__init__()
-        img_size = (img_size, img_size)
-        patch_size = (patch_size, patch_size)
-        patches_resolution = [img_size[0] // patch_size[0], img_size[1] // patch_size[1]]
-        self.img_size = img_size
-        self.patch_size = patch_size
-        self.patches_resolution = patches_resolution
-        self.num_patches = patches_resolution[0] * patches_resolution[1]
-
-        self.in_chans = in_chans
-        self.embed_dim = embed_dim
-
-        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=patch_size)
-        if norm_layer is not None:
-            self.norm = norm_layer(embed_dim)
-        else:
-            self.norm = None
-
-    def execute(self, x):
-        B, C, H, W = x.shape
-        assert H == self.img_size[0] and W == self.img_size[1], \
-            f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
-        x = self.proj(x).flatten(2).transpose(0, 2, 1)
-        if self.norm is not None:
-            x = self.norm(x)
-        return x
-
-    def flops(self):
-        Ho, Wo = self.patches_resolution
-        flops = Ho * Wo * self.embed_dim * self.in_chans * (self.patch_size[0] * self.patch_size[1])
-        if self.norm is not None:
-            flops += Ho * Wo * self.embed_dim
-        return flops
-
-class SwinTransformer(nn.Module):
-    def __init__(self, img_size=224, patch_size=4, in_chans=3, num_classes=1000,
-                 embed_dim=96, depths=[2, 2, 6, 2], num_heads=[3, 6, 12, 24],
-                 window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
-                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
-                 norm_layer=nn.LayerNorm, ape=False, patch_norm=True, **kwargs):
-        super().__init__()
-
-        self.num_classes = num_classes
-        self.num_layers = len(depths)
-        self.embed_dim = embed_dim
-        self.ape = ape
-        self.patch_norm = patch_norm
-        self.num_features = int(embed_dim * 2 ** (self.num_layers - 1))
-        self.mlp_ratio = mlp_ratio
-
-        # split image into non-overlapping patches
-        self.patch_embed = PatchEmbed(
-            img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim,
-            norm_layer=norm_layer if self.patch_norm else None)
-        num_patches = self.patch_embed.num_patches
-        patches_resolution = self.patch_embed.patches_resolution
-        self.patches_resolution = patches_resolution
-
-        # absolute position embedding
-        if self.ape:
-            self.absolute_pos_embed = nn.Parameter(jt.zeros(1, num_patches, embed_dim))
-            trunc_normal_jt(self.absolute_pos_embed, std=.02)
-        
-        self.pos_drop = nn.Dropout(p=drop_rate)
-
-        dpr = [x.item() for x in jt.linspace(0, drop_path_rate, sum(depths))]
-
-        # build layers
-        self.layers = nn.ModuleList()
-        for i_layer in range(self.num_layers):
-            layer = BasicLayer(dim=int(embed_dim * 2 ** i_layer),
-                               input_resolution=(patches_resolution[0] // (2 ** i_layer),
-                                                 patches_resolution[1] // (2 ** i_layer)),
-                               depth=depths[i_layer],
-                               num_heads=num_heads[i_layer],
-                               window_size=window_size,
-                               mlp_ratio=self.mlp_ratio,
-                               qkv_bias=qkv_bias, qk_scale=qk_scale,
-                               drop=drop_rate, attn_drop=attn_drop_rate,
-                               drop_path=dpr[sum(depths[:i_layer]):sum(depths[:i_layer + 1])],
-                               norm_layer=norm_layer,
-                               downsample=PatchMerging if (i_layer < self.num_layers - 1) else None)
-            self.layers.append(layer)
-
-        self.norm = norm_layer(self.num_features)
-        self.avgpool = lambda x: jt.mean(x, dim=1)
-        self.head = nn.Linear(self.num_features, num_classes) if num_classes > 0 else nn.Identity()
-
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_jt(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-
-    def no_weight_decay(self):
-        return {'absolute_pos_embed'}
-
-    def no_weight_decay_keywords(self):
-        return {'relative_position_bias_table'}
-
-    def forward_features(self, x):
-        x = self.patch_embed(x)
-        if self.ape:
-            x = x + self.absolute_pos_embed
-        x = self.pos_drop(x)
-
-        for layer in self.layers:
-            x = layer(x)
-
-        x = self.norm(x)  # B L C
-        x = self.avgpool(x)  # B C
-        return x
-
-    def execute(self, x):
-        x = self.forward_features(x)
-        x = self.head(x)
-        return x
-
-    def flops(self):
-        flops = 0
-        flops += self.patch_embed.flops()
-        for i, layer in enumerate(self.layers):
-            flops += layer.flops()
-        flops += self.num_features * self.patches_resolution[0] * self.patches_resolution[1] // (2 ** self.num_layers)
-        flops += self.num_features * self.num_classes
-        return flops
-
 if __name__ == "__main__":
     
-    model = SwinTransformer(img_size=224, patch_size=4, in_chans=3, num_classes=1000)
-    print(model)
-    x = jt.randn(4, 3, 224, 224)
-    output = model(x)
-    print(output.shape)  # Should be [4, 1000]
-    print(model.flops())
+    layer = BasicLayer(dim=96, input_resolution=(56, 56), depth=2, num_heads=3, window_size=7, downsample=PatchMerging)
+    x = jt.randn(4, 3136, 96)
+    output = layer(x)
+    print(output.shape)  # (4, 784, 192)
+    print(layer.flops())
