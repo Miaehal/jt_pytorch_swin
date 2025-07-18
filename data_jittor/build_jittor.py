@@ -3,7 +3,7 @@ import numpy as np
 import jittor as jt
 
 class RandomErasing:
-    def __init__(self, prob=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3), value=0):
+    def __init__(self, prob=0.25, scale=(0.02, 0.33), ratio=(0.3, 3.3), value=0):
         """The same as the default parameters of timm"""
         self.prob = prob
         self.scale = scale
@@ -66,8 +66,6 @@ def build_dataset(is_train, config):
 def build_transform(is_train, config):
     resize_im = config.DATA.IMG_SIZE > 32
     if is_train:
-        # Data augmentation
-    if is_train:
         transform_list = [
             jt.transform.RandomResizedCrop(
                 config.DATA.IMG_SIZE, 
@@ -84,8 +82,8 @@ def build_transform(is_train, config):
         ]
         random_erasing = RandomErasing(
             prob=config.AUG.REPROB,
-            mode=config.AUG.REMODE,
-            max_count=config.AUG.RECOUNT
+            scale=config.AUG.SCALE,
+            ratio=config.AUG.RATIO
         )
         transform_list.append(random_erasing)
         if not resize_im:

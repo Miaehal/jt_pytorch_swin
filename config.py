@@ -100,9 +100,9 @@ _C.AUG.COLOR_JITTER = 0.4
 # Random erase prob
 _C.AUG.REPROB = 0.25
 # Random erase mode
-_C.AUG.REMODE = 'pixel'
+_C.AUG.SCALE = (0.02, 0.33)
 # Random erase count
-_C.AUG.RECOUNT = 1
+_C.AUG.RATIO = (0.3, 3.3)
 
 # -----------------------------------------------------------------------------
 # Testing settings
