@@ -30,7 +30,7 @@ class RandomErasing:
                 return img
         return img
 
-def build_loader(config):
+def build_loader_jittor(config):
     config.defrost()
     dataset_train, config.MODEL.NUM_CLASSES = build_dataset(is_train=True, config=config)
     config.freeze()

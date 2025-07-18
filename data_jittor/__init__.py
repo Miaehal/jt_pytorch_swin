@@ -1,1 +1,1 @@
-from .build_jittor import build_loader
+from .build_jittor import build_loader_jittor
