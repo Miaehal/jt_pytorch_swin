@@ -63,10 +63,6 @@ def build_dataset(is_train, config):
         raise NotImplementedError("We only support cats_vs_dogs Now.")
     return dataset, nb_classes
 
-# Draw on timm: https://huggingface.co/spaces/Roll20/pet_score/blob/main/lib/timm/data/constants.py
-IMAGENET_DEFAULT_MEAN = (0.485, 0.456, 0.406)
-IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
-
 def build_transform(is_train, config):
     resize_im = config.DATA.IMG_SIZE > 32
     if is_train:
@@ -84,7 +80,7 @@ def build_transform(is_train, config):
                 saturation=config.AUG.COLOR_JITTER
             ),
             jt.transform.ToTensor(),
-            jt.transform.ImageNormalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD)
+            jt.transform.ImageNormalize(mean=config.DATA.IMAGENET_DEFAULT_MEAN, std=config.DATA.IMAGENET_DEFAULT_STD)
         ]
         random_erasing = RandomErasing(
             prob=config.AUG.REPROB,
@@ -108,5 +104,5 @@ def build_transform(is_train, config):
                     interpolation=config.DATA.INTERPOLATION))
 
         t.append(jt.transform.ToTensor())
-        t.append(jt.transform.ImageNormalize(mean=IMAGENET_DEFAULT_MEAN, std=IMAGENET_DEFAULT_STD))
+        t.append(jt.transform.ImageNormalize(mean=config.DATA.IMAGENET_DEFAULT_MEAN, std=config.DATA.IMAGENET_DEFAULT_STD))
     return jt.transform.Compose(t)
