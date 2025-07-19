@@ -132,7 +132,3 @@ def auto_resume_helper(output_dir):
     else:
         resume_file = None
     return resume_file
-
-def reduce_tensor(tensor):
-    # Reduce the tensor across all processes
-    return tensor
