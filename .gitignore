@@ -1,2 +1,3 @@
-*:Zone.Identifier
+*:config.py:Zone.Identifier
 *:optimizer.py:Zone.Identifier
+*:main.py:Zone.Identifier
