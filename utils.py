@@ -4,7 +4,7 @@ import jittor as jt
 def load_checkpoint(config, model, optimizer, lr_scheduler, logger):
     logger.info(f"==============> Resuming form {config.MODEL.RESUME}....................")
     checkpoint = jt.load(config.MODEL.RESUME)
-    msg = model.load_state_dict(checkpoint['model'], strict=False)
+    msg = model.load_state_dict(checkpoint['model'])
     logger.info(msg)
     max_accuracy = 0.0
     if not config.EVAL_MODE and 'optimizer' in checkpoint and 'lr_scheduler_step' in checkpoint and 'epoch' in checkpoint:
@@ -101,7 +101,7 @@ def load_pretrained(config, model, logger):
             del state_dict['head.bias']
             logger.warning(f"Error in loading classifier head, re-init classifier head to 0")
     
-    msg = model.load_state_dict(state_dict, strict=False)
+    msg = model.load_state_dict(state_dict)
     logger.warning(msg)
 
     logger.info(f"=> loaded successfully '{config.MODEL.PRETRAINED}'")
