@@ -1,6 +1,7 @@
 import os
-import numpy as np
+import random
 import jittor as jt
+from PIL import Image
 
 class RandomErasing:
     def __init__(self, prob=0.25, scale=(0.02, 0.33), ratio=(0.3, 3.3), value=0):
@@ -11,20 +12,20 @@ class RandomErasing:
         self.value = value
 
     def __call__(self, img):
-        if jt.random() > self.prob:
+        if random.random() > self.prob:
             return img
         for _ in range(10):
             area = img.shape[1] * img.shape[2]
-            target_area = jt.rand() * (self.scale[1] - self.scale[0]) + self.scale[0]
+            target_area = random.random() * (self.scale[1] - self.scale[0]) + self.scale[0]
             target_area *= area
 
-            aspect_ratio = jt.rand() * (self.ratio[1] - self.ratio[0]) + self.ratio[0]
+            aspect_ratio = random.random() * (self.ratio[1] - self.ratio[0]) + self.ratio[0]
             # Calculate the height and width of the rectangle
-            h = int(round(np.sqrt(target_area * aspect_ratio)))
-            w = int(round(np.sqrt(target_area / aspect_ratio)))
+            h = int(round((target_area * aspect_ratio) ** 0.5))
+            w = int(round((target_area / aspect_ratio) ** 0.5))
             if w < img.shape[2] and h < img.shape[1]:
-                x1 = int(jt.rand() * (img.shape[2] - w))
-                y1 = int(jt.rand() * (img.shape[1] - h))
+                x1 = int(random.randint(0, img.shape[2] - w))
+                y1 = int(random.randint(0, img.shape[1] - h))
                 # Ensure the coordinates are within bounds
                 img[:, y1:y1+h, x1:x1+w] = self.value
                 return img
@@ -57,19 +58,30 @@ def build_dataset(is_train, config):
     if config.DATA.DATASET == 'cats_vs_dogs':
         prefix = 'train' if is_train else 'val'
         root = os.path.join(config.DATA.DATA_PATH, prefix)
-        dataset = jt.datasets.ImageFolder(root, transform=transform)
+        dataset = jt.dataset.ImageFolder(root, transform=transform)
         nb_classes = 2
     else:
         raise NotImplementedError("We only support cats_vs_dogs Now.")
     return dataset, nb_classes
 
+def _string_to_interp_mode(mode):
+    if mode == 'bicubic':
+        return Image.BICUBIC
+    elif mode == 'lanczos':
+        return Image.LANCZOS
+    elif mode == 'hamming':
+        return Image.HAMMING
+    else:
+        return Image.BILINEAR
+
 def build_transform(is_train, config):
     resize_im = config.DATA.IMG_SIZE > 32
+    interp_mode = _string_to_interp_mode(config.DATA.INTERPOLATION)
     if is_train:
         transform_list = [
             jt.transform.RandomResizedCrop(
                 config.DATA.IMG_SIZE, 
-                interpolation=config.DATA.INTERPOLATION
+                interpolation=interp_mode
             ),
             jt.transform.RandomHorizontalFlip(),
             jt.transform.ColorJitter(
@@ -95,11 +107,10 @@ def build_transform(is_train, config):
     if resize_im:
         if config.TEST.CROP:
             size = int((256 / 224) * config.DATA.IMG_SIZE)
-            t.append(jt.transform.Resize(size, interpolation=config.DATA.INTERPOLATION))
-            t.append(jt.transforms.CenterCrop(config.DATA.IMG_SIZE))
+            t.append(jt.transform.Resize(size, interp_mode))
+            t.append(jt.transform.CenterCrop(config.DATA.IMG_SIZE))
         else:
-            t.append(jt.transform.Resize(config.DATA.IMG_SIZE, config.DATA.IMG_SIZE,
-                    interpolation=config.DATA.INTERPOLATION))
+            t.append(jt.transform.Resize(config.DATA.IMG_SIZE, config.DATA.IMG_SIZE, interp_mode))
 
         t.append(jt.transform.ToTensor())
         t.append(jt.transform.ImageNormalize(mean=config.DATA.IMAGENET_DEFAULT_MEAN, std=config.DATA.IMAGENET_DEFAULT_STD))

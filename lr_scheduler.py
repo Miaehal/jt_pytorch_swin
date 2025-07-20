@@ -79,8 +79,8 @@ def build_scheduler(config, optimizer, n_iter_per_epoch):
     if config.TRAIN.LR_SCHEDULER.NAME == 'cosine':
         lr_scheduler = CosineAnnealingLR(
             optimizer,
-            t_initial=(num_steps - warmup_steps) if config.TRAIN.LR_SCHEDULER.WARMUP_PREFIX else num_steps,
-            lr_min=config.TRAIN.MIN_LR
+            T_max=(num_steps - warmup_steps) if config.TRAIN.LR_SCHEDULER.WARMUP_PREFIX else num_steps,
+            eta_min=config.TRAIN.MIN_LR
         )
     elif config.TRAIN.LR_SCHEDULER.NAME == 'step':
         lr_scheduler = StepLR(

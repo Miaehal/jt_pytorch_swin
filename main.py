@@ -1,15 +1,13 @@
 import os
 import time
 import json
-import random
 import argparse
 import datetime
-import numpy as np
 import jittor as jt
 
 from config import get_config
-from models import build_model_jittor
-from data import build_loader_jittor
+from models_jittor import build_model_jittor
+from data_jittor import build_loader_jittor
 from lr_scheduler import build_scheduler
 from optimizer import build_optimizer
 from logger import create_logger
@@ -105,10 +103,9 @@ def main(config):
     logger.info("Start training")
     start_time = time.time()
     for epoch in range(config.TRAIN.START_EPOCH, config.TRAIN.EPOCHS):
-        data_loader_train.sampler.set_epoch(epoch)
 
         train_one_epoch(config, model, criterion, data_loader_train, optimizer, epoch, lr_scheduler)
-        if jt.rank() == 0 and (epoch % config.SAVE_FREQ == 0 or epoch == (config.TRAIN.EPOCHS - 1)):
+        if jt.rank == 0 and (epoch % config.SAVE_FREQ == 0 or epoch == (config.TRAIN.EPOCHS - 1)):
             save_checkpoint(config, epoch, model, max_accuracy, optimizer, lr_scheduler, logger)
 
         acc1, acc5, loss = validate(config, data_loader_val, model)
@@ -150,8 +147,8 @@ def train_one_epoch(config, model, criterion, data_loader, optimizer, epoch, lr_
         end = time.time()
 
         if idx % config.PRINT_FREQ == 0:
-            lr = optimizer.param_groups[0]['lr']
-            wd = optimizer.param_groups[0]['weight_decay']
+            lr = optimizer.lr
+            wd = optimizer.weight_decay
             etas = batch_time.avg * (num_steps - idx)
             logger.info(
                 f'Train: [{epoch}/{config.TRAIN.EPOCHS}][{idx}/{num_steps}]\t'
@@ -226,13 +223,13 @@ if __name__ == '__main__':
     if 'WORLD_SIZE' in os.environ:
         jt.init_distributed(use_cuda=jt.has_cuda)
 
-    seed = config.SEED + jt.rank()
+    seed = config.SEED + jt.rank
     jt.set_seed(seed)
 
     # linear scale the learning rate according to total batch size, may not be optimal
-    linear_scaled_lr = config.TRAIN.BASE_LR * config.DATA.BATCH_SIZE * jt.world_size() / 512.0
-    linear_scaled_warmup_lr = config.TRAIN.WARMUP_LR * config.DATA.BATCH_SIZE * jt.world_size() / 512.0
-    linear_scaled_min_lr = config.TRAIN.MIN_LR * config.DATA.BATCH_SIZE * jt.world_size() / 512.0
+    linear_scaled_lr = config.TRAIN.BASE_LR * config.DATA.BATCH_SIZE * jt.world_size / 512.0
+    linear_scaled_warmup_lr = config.TRAIN.WARMUP_LR * config.DATA.BATCH_SIZE * jt.world_size / 512.0
+    linear_scaled_min_lr = config.TRAIN.MIN_LR * config.DATA.BATCH_SIZE * jt.world_size / 512.0
     # gradient accumulation also need to scale the learning rate
     if config.TRAIN.ACCUMULATION_STEPS > 1:
         linear_scaled_lr = linear_scaled_lr * config.TRAIN.ACCUMULATION_STEPS
@@ -245,9 +242,9 @@ if __name__ == '__main__':
     config.freeze()
 
     os.makedirs(config.OUTPUT, exist_ok=True)
-    logger = create_logger(output_dir=config.OUTPUT, dist_rank=jt.rank(), name=f"{config.MODEL.NAME}")
+    logger = create_logger(output_dir=config.OUTPUT, dist_rank=jt.rank, name=f"{config.MODEL.NAME}")
 
-    if jt.rank() == 0:
+    if jt.rank == 0:
         path = os.path.join(config.OUTPUT, "config.json")
         with open(path, "w") as f:
             f.write(config.dump())
