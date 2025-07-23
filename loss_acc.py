@@ -12,11 +12,12 @@ class LabelSmoothingCrossEntropy(nn.Module):
         num_classes = x.shape[-1]
         assert x.shape[0] == target.shape[0], "Batch size of inputs and targets must match."
         log_probs = nn.log_softmax(x, dim=-1)
-        # Create a tensor of shape (batch_size, num_classes) filled with the smoothing value
-        soft_targets = jt.full_like(x, self.smoothing / (num_classes - 1))
-        
+        zeros = jt.zeros_like(x)
         target_reshaped = target.unsqueeze(1)
-        soft_targets.scatter_(1, target_reshaped, self.confidence)
+        # Create one-hot encoded targets with smoothing
+        one_hot_targets = zeros.scatter(1, target_reshaped, jt.array(1.0))
+        soft_targets = one_hot_targets * self.confidence + \
+                       (1 - one_hot_targets) * (self.smoothing / (num_classes - 1))
         loss = (-soft_targets * log_probs).sum(dim=-1)
         return loss.mean()
 
@@ -42,7 +43,7 @@ def accuracy(output, target, topk=(1,)):
     maxk = max(topk)
     batch_size = target.shape[0]
 
-    _, pred = jt.topk(output, maxk, 1, True, True)
+    _, pred = jt.topk(output, maxk, dim=1, largest=True, sorted=True)
     pred = pred.transpose(1, 0)
     correct = pred.equal(target.reshape(1, -1).expand_as(pred))
 

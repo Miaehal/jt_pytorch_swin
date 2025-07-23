@@ -18,7 +18,7 @@ _C.DATA.DATASET = 'cats_vs_dogs'
 _C.DATA.IMG_SIZE = 224
 # Interpolation to resize image (random, bilinear, bicubic)
 _C.DATA.INTERPOLATION = 'bicubic'
-_C.DATA.NUM_WORKERS = 0 
+_C.DATA.NUM_WORKERS = 8
 # Normalization, Draw on timm: https://huggingface.co/spaces/Roll20/pet_score/blob/main/lib/timm/data/constants.py
 _C.DATA.IMAGENET_DEFAULT_MEAN = [0.485, 0.456, 0.406]
 _C.DATA.IMAGENET_DEFAULT_STD = [0.229, 0.224, 0.225]
@@ -65,7 +65,7 @@ _C.MODEL.SWIN.PATCH_NORM = True
 _C.TRAIN = CN()
 _C.TRAIN.START_EPOCH = 0
 _C.TRAIN.EPOCHS = 20
-_C.TRAIN.WARMUP_EPOCHS = 4
+_C.TRAIN.WARMUP_EPOCHS = 5
 _C.TRAIN.WEIGHT_DECAY = 0.05
 _C.TRAIN.BASE_LR = 5e-4
 _C.TRAIN.WARMUP_LR = 5e-7
@@ -81,11 +81,11 @@ _C.TRAIN.ACCUMULATION_STEPS = 1
 # LR scheduler
 _C.TRAIN.LR_SCHEDULER = CN()
 _C.TRAIN.LR_SCHEDULER.NAME = 'cosine'
-# Epoch interval to decay LR, used in StepLRScheduler
-_C.TRAIN.LR_SCHEDULER.DECAY_EPOCHS = 30
-# LR decay rate, used in StepLRScheduler
-_C.TRAIN.LR_SCHEDULER.DECAY_RATE = 0.1
-# warmup_prefix used in CosineLRScheduler
+# Epoch interval to decay LR, used in StepLR
+_C.TRAIN.LR_SCHEDULER.DECAY_EPOCHS = 2
+# LR decay rate, used in StepLR
+_C.TRAIN.LR_SCHEDULER.GAMMA = 0.1
+# warmup_prefix used in CosineAnnealingLR
 _C.TRAIN.LR_SCHEDULER.WARMUP_PREFIX = True
 
 # Optimizer
@@ -107,7 +107,7 @@ _C.AUG.COLOR_JITTER = 0.4
 # Random erase prob
 _C.AUG.REPROB = 0.25
 # Random erase mode
-_C.AUG.SCALE = (0.02, 0.33)
+_C.AUG.SCALE = (0.02, 0.15)
 # Random erase count
 _C.AUG.RATIO = (0.3, 3.3)
 
@@ -168,6 +168,10 @@ def update_config(config, args):
         config.DATA.BATCH_SIZE = args.batch_size
     if _check_args('data_path'):
         config.DATA.DATA_PATH = args.data_path
+    if _check_args('pretrained'):
+        config.MODEL.PRETRAINED = args.pretrained
+    if _check_args('resume'):
+        config.MODEL.RESUME = args.resume
     if _check_args('accumulation_steps'):
         config.TRAIN.ACCUMULATION_STEPS = args.accumulation_steps
     if _check_args('output'):
@@ -178,8 +182,6 @@ def update_config(config, args):
         config.EVAL_MODE = True
     if _check_args('throughput'):
         config.THROUGHPUT_MODE = True
-
-    ## Overwrite optimizer if not None, currently we use it for [fused_adam, fused_lamb]
     if _check_args('optim'):
         config.TRAIN.OPTIMIZER.NAME = args.optim
 

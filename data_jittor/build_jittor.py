@@ -4,7 +4,7 @@ import jittor as jt
 from PIL import Image
 
 class RandomErasing:
-    def __init__(self, prob=0.25, scale=(0.02, 0.33), ratio=(0.3, 3.3), value=0):
+    def __init__(self, prob=0.25, scale=(0.02, 0.15), ratio=(0.3, 3.3), value=0):
         """The same as the default parameters of timm"""
         self.prob = prob
         self.scale = scale
@@ -59,10 +59,10 @@ def build_dataset(is_train, config):
         prefix = 'train' if is_train else 'val'
         root = os.path.join(config.DATA.DATA_PATH, prefix)
         dataset = jt.dataset.ImageFolder(root, transform=transform)
-        nb_classes = 2
+        num_classes = 2
     else:
         raise NotImplementedError("We only support cats_vs_dogs Now.")
-    return dataset, nb_classes
+    return dataset, num_classes
 
 def _string_to_interp_mode(mode):
     if mode == 'bicubic':
@@ -100,7 +100,8 @@ def build_transform(is_train, config):
         transform_list.append(random_erasing)
         if not resize_im:
             # RandomCrop
-            transform_list[0] = jt.transform.RandomCrop(config.DATA.IMG_SIZE, padding=4)
+            transform_list[0] = jt.nn.ZeroPad2d(padding=4)
+            transform_list.insert(1, jt.transform.RandomCrop(config.DATA.IMG_SIZE))
         return jt.transform.Compose(transform_list)
 
     t = []
@@ -110,8 +111,8 @@ def build_transform(is_train, config):
             t.append(jt.transform.Resize(size, interp_mode))
             t.append(jt.transform.CenterCrop(config.DATA.IMG_SIZE))
         else:
-            t.append(jt.transform.Resize(config.DATA.IMG_SIZE, config.DATA.IMG_SIZE, interp_mode))
+            t.append(jt.transform.Resize(config.DATA.IMG_SIZE, interp_mode))
 
-        t.append(jt.transform.ToTensor())
-        t.append(jt.transform.ImageNormalize(mean=config.DATA.IMAGENET_DEFAULT_MEAN, std=config.DATA.IMAGENET_DEFAULT_STD))
+    t.append(jt.transform.ToTensor())
+    t.append(jt.transform.ImageNormalize(mean=config.DATA.IMAGENET_DEFAULT_MEAN, std=config.DATA.IMAGENET_DEFAULT_STD))
     return jt.transform.Compose(t)

@@ -61,39 +61,39 @@ class LinearLRScheduler:
 def build_scheduler(config, optimizer, n_iter_per_epoch):
     num_steps = int(config.TRAIN.EPOCHS * n_iter_per_epoch)
     warmup_steps = int(config.TRAIN.WARMUP_EPOCHS * n_iter_per_epoch)
-    decay_steps = int(config.TRAIN.LR_SCHEDULER.DECAY_EPOCHS * n_iter_per_epoch)
 
     base_lr = optimizer.lr
 
-    lr_scheduler = None
+    base_scheduler = None
 
     if config.TRAIN.LR_SCHEDULER.NAME == 'linear':
-        lr_scheduler = LinearLRScheduler(
+        base_scheduler = LinearLRScheduler(
             optimizer,
             t_initial=num_steps,
             lr_min_rate=config.TRAIN.MIN_LR / config.TRAIN.BASE_LR if config.TRAIN.BASE_LR > 0 else 0.0,
             warmup_t=warmup_steps,
             warmup_lr_init=config.TRAIN.WARMUP_LR
         )
+        lr_scheduler = base_scheduler
         return lr_scheduler
     if config.TRAIN.LR_SCHEDULER.NAME == 'cosine':
-        lr_scheduler = CosineAnnealingLR(
+        base_scheduler = CosineAnnealingLR(
             optimizer,
             T_max=(num_steps - warmup_steps) if config.TRAIN.LR_SCHEDULER.WARMUP_PREFIX else num_steps,
             eta_min=config.TRAIN.MIN_LR
         )
     elif config.TRAIN.LR_SCHEDULER.NAME == 'step':
-        lr_scheduler = StepLR(
+        base_scheduler = StepLR(
             optimizer,
-            decay_t=decay_steps,
-            decay_rate=config.TRAIN.LR_SCHEDULER.DECAY_RATE
+            step_size=config.TRAIN.LR_SCHEDULER.DECAY_EPOCHS,
+            gamma=config.TRAIN.LR_SCHEDULER.GAMMA
         )
     else:
         raise ValueError(f"Unsupported LR scheduler: {config.TRAIN.LR_SCHEDULER.NAME}")
     
     lr_scheduler = WarmupScheduler(
         optimizer,
-        lr_scheduler,
+        base_scheduler,
         warmup_steps=warmup_steps,
         warmup_lr_init=config.TRAIN.WARMUP_LR,
         base_lr=base_lr

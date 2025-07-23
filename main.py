@@ -37,9 +37,9 @@ def parse_option():
     parser.add_argument('--eval', action='store_true', help='Perform evaluation only')
     parser.add_argument('--throughput', action='store_true', help='Test throughput only')
 
-    ## overwrite optimizer in config (*.yaml) if specified, e.g., fused_adam/fused_lamb
+    ## overwrite optimizer in config (*.yaml) if specified, e.g., adamw/sgd
     parser.add_argument('--optim', type=str,
-                        help='overwrite optimizer if provided, can be adamw/sgd/fused_adam/fused_lamb.')
+                        help='overwrite optimizer if provided, can be adamw/sgd.')
 
     args, unparsed = parser.parse_known_args()
     config = get_config(args)
@@ -53,10 +53,10 @@ def main(config):
     logger.info(str(model))
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info(f"number of params: {n_parameters}")
+    logger.info(f"number of params: {n_parameters / 1e6} M")
     if hasattr(model, 'flops'):
         flops = model.flops()
-        logger.info(f"number of GFLOPs: {flops / 1e9}")
+        logger.info(f"number of GFLOPs: {flops / 1e9} G")
 
     optimizer = build_optimizer(config, model)
 

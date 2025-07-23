@@ -1,3 +1,6 @@
 __pycache__/
 output/
 *Zone.Identifier
+log_rank0.txt
+alignment_curves.png
+loss_curve.png

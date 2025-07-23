@@ -67,7 +67,7 @@ def load_pretrained(config, model, logger):
         absolute_pos_embed_current = model.state_dict()[k]
         _, L1, C1 = absolute_pos_embed_pretrained.size()
         _, L2, C2 = absolute_pos_embed_current.size()
-        if C1 != C1:
+        if C1 != C2:
             logger.warning(f"Error in loading {k}, passing......")
         else:
             if L1 != L2:
@@ -86,20 +86,11 @@ def load_pretrained(config, model, logger):
     Nc1 = head_bias_pretrained.shape[0]
     Nc2 = model.head.bias.shape[0]
     if (Nc1 != Nc2):
-        if Nc1 == 21841 and Nc2 == 1000:
-            logger.info("loading ImageNet-22K weight to ImageNet-1K ......")
-            map22kto1k_path = f'data/map22kto1k.txt'
-            with open(map22kto1k_path) as f:
-                map22kto1k = f.readlines()
-            map22kto1k = [int(id22k.strip()) for id22k in map22kto1k]
-            state_dict['head.weight'] = state_dict['head.weight'][map22kto1k, :]
-            state_dict['head.bias'] = state_dict['head.bias'][map22kto1k]
-        else:
-            jt.nn.init.constant_(model.head.bias, 0.)
-            jt.nn.init.constant_(model.head.weight, 0.)
-            del state_dict['head.weight']
-            del state_dict['head.bias']
-            logger.warning(f"Error in loading classifier head, re-init classifier head to 0")
+        jt.nn.init.constant_(model.head.bias, 0.)
+        jt.nn.init.constant_(model.head.weight, 0.)
+        del state_dict['head.weight']
+        del state_dict['head.bias']
+        logger.warning(f"Error in loading classifier head, re-init classifier head to 0")
     
     msg = model.load_state_dict(state_dict)
     logger.warning(msg)
