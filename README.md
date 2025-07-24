@@ -121,7 +121,7 @@ Start the training of the model using the following command. The training logs a
 ```bash
 python main.py \
 --cfg ./configs/swin_tiny_patch4_window7_224.yaml \
---data-path ../cats_vs_dogs \
+--data-path ./cats_vs_dogs \
 --batch-size 4 \
 --output ./output/swin_tiny_cats_vs_dogs_jittor_run
 ```
@@ -133,7 +133,7 @@ Use the following command to evaluate the checkpoints of a trained model. Please
 # Test the model saved in the 13th epoch
 python main.py \
 --cfg ./configs/swin_tiny_patch4_window7_224.yaml \
---data-path ../cats_vs_dogs \
+--data-path ./cats_vs_dogs \
 --eval \
 --resume ./output/swin_tiny_patch4_window7_224/jittor_default/ckpt_epoch_13.pkl
 ```
@@ -144,6 +144,7 @@ For detailed configuration, please refer to **`config.py`**.
 
 ### Result comparison
 
+<div align="center">
 | Framework | PyTorch | Jittor |
 |:--:|:--:|:--:|
 | training time per epoch | 149.90 seconds | 155.20 seconds |
@@ -153,6 +154,7 @@ For detailed configuration, please refer to **`config.py`**.
 | FLOPs | 4.5 G | 4.5 G |
 | image size| 224*224 | 224*224 |
 | training time| 0:53:42 | 0:55:31 |
+</div>
 
 ### Alignment graph of the accuracy curve of the validation set
 
@@ -169,4 +171,4 @@ As can be seen from the alignment curve graph above, **the Jittor accuracy curve
 
 The Loss values in the early stage of training vary by order of magnitude (Jittor `~0.7` vs. PyTorch `~7.0`), and the reason is that in PyTorch, **`torch.nn.CrossEntropyLoss` has a special scaling when calculating the loss**. The initial value of Jittor's '~0.7' is more in line with the theoretical expectation of binary classification cross-entropy.
 
-To sum up, although there are minor performance differences caused by the small dataset, from the perspective of **core training dynamics and behavior**, since the Jittor results are similar to the official PyTorch results, this Jittor reproduction **aligns with the PyTorch benchmark**, verifying the correctness of the code implementation.**If more epochs can be trained on large datasets, it may have a very good effect.** 
+To sum up, although there are minor performance differences caused by the small dataset, from the perspective of **core training dynamics and behavior**, since the Jittor results are similar to the official PyTorch results, this Jittor reproduction **aligns with the PyTorch benchmark**, verifying the correctness of the code implementation.**If more epochs can be trained on large datasets, it may have a very good effect.**
