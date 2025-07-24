@@ -1,5 +1,4 @@
 import re
-import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -96,7 +95,7 @@ def plot_loss(pytorch_log, jittor_log, save_path='loss_curve.png'):
     ax.legend(fontsize=12)
     ax.grid(True)
     ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-
+    ax.set_ylim(0, 1)
     plt.savefig(save_path, dpi=300)
     print(f"The loss alignment curve graph has been saved to: {save_path}")
 
