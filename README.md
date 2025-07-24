@@ -144,7 +144,6 @@ For detailed configuration, please refer to **`config.py`**.
 
 ### Result comparison
 
-<div align="center">
 | Framework | PyTorch | Jittor |
 |:--:|:--:|:--:|
 | training time per epoch | 149.90 seconds | 155.20 seconds |
@@ -154,7 +153,6 @@ For detailed configuration, please refer to **`config.py`**.
 | FLOPs | 4.5 G | 4.5 G |
 | image size| 224*224 | 224*224 |
 | training time| 0:53:42 | 0:55:31 |
-</div>
 
 ### Alignment graph of the accuracy curve of the validation set
 
